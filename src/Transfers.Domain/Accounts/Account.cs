@@ -12,7 +12,7 @@ namespace Transfers.Domain.Accounts
         public decimal Balance { get; private set; } 
         public decimal OverdraftLimit { get; private set; }
         public AccountStatus Status { get; private set; }
-        public TransferLimits Limits { get; private set; } = null!;
+        public TransferLimits? Limits { get; private set; } = null;
         public decimal AvailableAmount => Balance + OverdraftLimit;
 
         public Account(int id, string holderName, decimal balance, decimal overdraftLimit, AccountStatus status, TransferLimits limits)

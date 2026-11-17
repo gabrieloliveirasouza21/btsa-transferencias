@@ -7,7 +7,7 @@ namespace Transfers.Domain.Accounts
 {
     public class Account
     {
-        public int Id { get; private set; }
+        public Guid Id { get; private set; }
         public string HolderName { get; private set; } = null!;
         public decimal Balance { get; private set; } 
         public decimal OverdraftLimit { get; private set; }
@@ -15,7 +15,7 @@ namespace Transfers.Domain.Accounts
         public TransferLimits Limits { get; private set; } = null!;
         public decimal AvailableAmount => Balance + OverdraftLimit;
 
-        public Account(int id, string holderName, decimal balance, decimal overdraftLimit, AccountStatus status, TransferLimits limits)
+        public Account(Guid id, string holderName, decimal balance, decimal overdraftLimit, AccountStatus status, TransferLimits limits)
         {
             if (overdraftLimit < 0)
             {

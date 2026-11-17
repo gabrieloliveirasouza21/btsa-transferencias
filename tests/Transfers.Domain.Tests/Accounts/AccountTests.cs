@@ -8,9 +8,9 @@ namespace Transfers.Domain.Tests.Accounts
 {
     public class AccountTests
     {
-        private static Account CreateAccount(int id = 1, string holderName = "John Doe", decimal balance = 1000m, decimal overdraftLimit = 500m, AccountStatus status = AccountStatus.Active)
+        private static Account CreateAccount(string holderName = "John Doe", decimal balance = 1000m, decimal overdraftLimit = 500m, AccountStatus status = AccountStatus.Active)
         {
-            return new Account(id, holderName, balance, overdraftLimit, status, new TransferLimits(5000m, 5, 1000m, 3));
+            return new Account(Guid.NewGuid(), holderName, balance, overdraftLimit, status, new TransferLimits(5000m, 5, 1000m, 3));
         }
 
         [Fact]

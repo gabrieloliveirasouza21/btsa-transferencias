@@ -113,6 +113,10 @@ O lock na conta de origem serializa as transferências dela. Por isso a contagem
 
 **Índices pensados nas consultas.** Os dois índices em `Transfers` atendem as duas consultas quentes do sistema: `(SourceAccountId, ProcessedAt)` para a janela de 60 minutos, e `(Status, ScheduledFor)` para encontrar as transferências agendadas que já venceram.
 
+**Lock com `UPDLOCK, ROWLOCK`.** A conta é lida com `SELECT ... WITH (UPDLOCK, ROWLOCK)` dentro da transação. O `UPDLOCK` faz uma segunda transação que queira a mesma conta esperar na leitura, e não só na escrita. Sem ele, as duas leriam o mesmo saldo antes de qualquer uma debitar. O `ROWLOCK` trava só a linha da conta, não a página inteira. O lock dura até o commit.
+
+**Consultas de leitura sem rastreamento.** Consultar uma conta ou listar contas usa `AsNoTracking`, porque nada ali vai ser alterado.
+
 **Enums como texto.** `Active` e `Failed` no banco são mais legíveis que `0` e `3`, e reordenar um enum não corrompe os dados.
 
 **Dinheiro em `decimal(18,2)`.** Nunca `float`.

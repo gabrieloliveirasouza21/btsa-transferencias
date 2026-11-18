@@ -34,17 +34,21 @@ namespace Transfers.Domain.Accounts
         {
         }
 
+        public void EnsureActive()
+        {
+            if (Status != AccountStatus.Active)
+            {
+                throw new DomainException(FailureReason.AccountNotActive, "Account is not active.");
+            }
+        }
+
         public void Credit(decimal amount)
         {
             if (amount <= 0)
             {
                 throw new DomainException(FailureReason.InvalidAmount, "Credit amount must be greater than zero.");
             }
-
-            if(Status != AccountStatus.Active)
-            {
-                throw new DomainException(FailureReason.AccountNotActive, "Account is not active.");
-            }
+            EnsureActive();
             Balance += amount;
         }
 
@@ -54,10 +58,7 @@ namespace Transfers.Domain.Accounts
             {
                 throw new DomainException(FailureReason.InvalidAmount, "Debit amount must be greater than zero.");
             }
-            if (Status != AccountStatus.Active)
-            {
-                throw new DomainException(FailureReason.AccountNotActive, "Account is not active.");
-            }
+            EnsureActive();
             if (amount > AvailableAmount)
             {
                 throw new DomainException(FailureReason.InsufficientFunds, "Insufficient funds for the debit operation.");

@@ -148,5 +148,27 @@ namespace Transfers.Domain.Tests.Accounts
             var exception = Assert.Throws<DomainException>(() => CreateAccount(overdraftLimit: -100m));
             Assert.Equal(FailureReason.InvalidAmount, exception.Reason);
         }
+
+        [Fact]
+        public void EnsureActive_ShouldNotThrow_WhenAccountIsActive()
+        {
+            var account = CreateAccount();
+
+            var exception = Record.Exception(account.EnsureActive);
+
+            Assert.Null(exception);
+        }
+
+        [Theory]
+        [InlineData(AccountStatus.Blocked)]
+        [InlineData(AccountStatus.Inactive)]
+        public void EnsureActive_ShouldThrowAccountNotActive_WhenAccountIsNotActive(AccountStatus status)
+        {
+            var account = CreateAccount(status: status);
+
+            var exception = Assert.Throws<DomainException>(account.EnsureActive);
+
+            Assert.Equal(FailureReason.AccountNotActive, exception.Reason);
+        }
     }
 }

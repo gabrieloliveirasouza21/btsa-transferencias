@@ -2,8 +2,6 @@
 
 API em ASP.NET Core (.NET 10) com SQL Server, e um frontend em React, para transferências entre contas: cheque especial, limite de valor e de tentativas por hora (com regras diferentes de dia e de noite) e transferências agendadas.
 
-> Projeto em construção: este README cresce junto com o código.
-
 ## Como rodar
 
 Pré-requisitos: .NET SDK 10, Node.js 20 ou mais novo, e Docker.
@@ -126,6 +124,8 @@ Com a Api rodando (`dotnet run --project src/Transfers.Api --launch-profile http
 
 Escolhi responder 422 na recusa, em vez de 201 com `status: Failed`. Para quem consome a API, "deu certo ou não" fica no status HTTP, sem precisar abrir o corpo. Como a tentativa foi registrada, o `transferId` continua disponível para consulta.
 
+Usei controllers, e não minimal APIs. As duas resolveriam: são seis rotas e toda a regra está no `TransferService`, então trocar seria mexer só na Api. Fiquei com controllers porque o `CreatedAtAction`, o `Url.Action` e o `ProblemDetailsFactory` já vêm prontos ali, e agrupar as rotas por recurso fica natural. Num serviço maior, com muitos endpoints pequenos, eu consideraria minimal APIs com `MapGroup`.
+
 ## Como uma transferência é processada
 
 Tudo acontece dentro de uma única transação:
@@ -160,7 +160,7 @@ O worker fica na Api, ao lado dos controllers, porque os dois são pontos de ent
 
 ## Frontend
 
-React com TypeScript, criado com Vite, sem biblioteca de componentes nem de estado. Para quatro telas pequenas, `useState` e `fetch` resolvem, e o código fica fácil de ler.
+React com TypeScript, criado com Vite, sem biblioteca de componentes nem de estado. Para uma tela com três painéis, `useState` e `fetch` resolvem, e o código fica fácil de ler.
 
 - Toda chamada passa por um único cliente (`src/api.ts`). Quando a resposta não é 2xx, ele lança um `ApiError` com o `ProblemDetails` da API. Assim, as telas mostram o motivo de uma recusa (`reason`) sem precisar tratar cada status separadamente.
 - Os tipos em `src/types.ts` espelham os contratos da API.
@@ -188,3 +188,19 @@ React com TypeScript, criado com Vite, sem biblioteca de componentes nem de esta
 **Enums como texto.** `Active` e `Failed` no banco são mais legíveis que `0` e `3`, e reordenar um enum não corrompe os dados.
 
 **Dinheiro em `decimal(18,2)`.** Nunca `float`.
+
+## Testes
+
+Os testes automatizados (`dotnet test`) cobrem o domínio, que é onde estão as regras: saldo com cheque especial, crédito cobrindo saldo negativo, conta inativa, limites por hora de dia e de noite, a virada da meia-noite no período noturno e todas as transições da máquina de estados da transferência. São testes de unidade puros, sem banco e sem mock, porque o domínio não depende de nada de fora.
+
+O fluxo completo (transação, locks, janela de 60 minutos no banco, agendador e respostas HTTP) eu validei rodando os cenários do enunciado contra um banco de verdade, pelo Swagger e pela tela.
+
+## O que eu faria com mais tempo
+
+- **Testes de integração.** Subir a Api com `WebApplicationFactory` e um SQL Server descartável (Testcontainers) para automatizar os cenários do enunciado. Em especial, disparar transferências em paralelo da mesma conta e provar que o saldo e o limite de tentativas nunca estouram, e cancelar e executar a mesma agendada ao mesmo tempo para ver o 409.
+- **Testes do `TransferService`** com repositórios em memória e um `TimeProvider` falso, para cobrir a ordem das checagens e a troca de dia para noite sem depender do relógio.
+- **Idempotência no `POST`.** Hoje, se o cliente reenviar a mesma requisição por causa de um timeout, são duas transferências. Um header `Idempotency-Key` guardado junto com a transferência resolveria.
+- **Agendador com várias instâncias.** Hoje duas instâncias podem pegar a mesma agendada, e a segunda só descobre no conflito. Buscar o lote com `UPDLOCK, READPAST` faria cada instância pegar transferências diferentes desde o começo.
+- **Histórico por conta.** Um `GET /api/accounts/{id}/transfers` paginado, e a lista na tela.
+- **Autenticação.** Hoje qualquer um movimenta qualquer conta.
+- **Observabilidade.** Logs estruturados com o Id da transferência e métricas de recusas por motivo.

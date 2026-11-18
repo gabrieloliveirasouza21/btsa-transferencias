@@ -46,6 +46,35 @@ namespace Transfers.Application.Transfers
             return TransferResponse.From(transfer);
         }
 
+        public async Task<TransferResponse> ScheduleAsync(ScheduleTransferRequest request, CancellationToken ct)
+        {
+            var transfer = Transfer.CreateScheduled(
+                request.SourceAccountId,
+                request.DestinationAccountId,
+                request.Amount,
+                request.ScheduledFor,
+                _timeProvider.GetUtcNow());
+
+            await EnsureAccountExistsAsync(transfer.SourceAccountId, ct);
+            await EnsureAccountExistsAsync(transfer.DestinationAccountId, ct);
+
+            _transfers.Add(transfer);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            return TransferResponse.From(transfer);
+        }
+
+        public async Task<TransferResponse> CancelAsync(Guid id, CancellationToken ct)
+        {
+            var transfer = await _transfers.GetByIdAsync(id, ct)
+                ?? throw new NotFoundException("Transfer", id);
+
+            transfer.Cancel(_timeProvider.GetUtcNow());
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            return TransferResponse.From(transfer);
+        }
+
         public async Task<TransferResponse> GetByIdAsync(Guid id, CancellationToken ct)
         {
             var transfer = await _transfers.GetByIdAsync(id, ct)
@@ -73,6 +102,14 @@ namespace Transfers.Application.Transfers
             catch (DomainException ex)
             {
                 transfer.Fail(ex.Reason, now);
+            }
+        }
+
+        private async Task EnsureAccountExistsAsync(Guid id, CancellationToken ct)
+        {
+            if (await _accounts.GetByIdAsync(id, ct) is null)
+            {
+                throw new NotFoundException("Account", id);
             }
         }
 

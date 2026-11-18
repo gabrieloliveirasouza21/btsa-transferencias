@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using Transfers.Application.Abstractions;
+using Transfers.Application.Common;
 
 namespace Transfers.Infrastructure.Persistence
 {
@@ -9,10 +11,22 @@ namespace Transfers.Infrastructure.Persistence
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
             var result = await work(ct);
-            await db.SaveChangesAsync(ct);
+            await SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
             return result;
+        }
+
+        public async Task SaveChangesAsync(CancellationToken ct)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                throw new ConcurrencyConflictException("The record was changed by another operation.", ex);
+            }
         }
     }
 }

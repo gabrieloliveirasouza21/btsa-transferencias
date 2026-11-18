@@ -24,6 +24,12 @@ namespace Transfers.Api.ErrorHandling
                     Title = "Resource not found",
                     Detail = notFound.Message
                 },
+                ConcurrencyConflictException conflict => new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Concurrent update",
+                    Detail = conflict.Message
+                },
                 _ => null
             };
 

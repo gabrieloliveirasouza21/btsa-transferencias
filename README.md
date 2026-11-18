@@ -94,15 +94,18 @@ Com a Api rodando (`dotnet run --project src/Transfers.Api --launch-profile http
 | Método | Rota | O que faz |
 |---|---|---|
 | `POST` | `/api/transfers` | Transferência imediata |
+| `POST` | `/api/transfers/scheduled` | Agenda uma transferência (`scheduledFor` no futuro) |
+| `POST` | `/api/transfers/{id}/cancel` | Cancela uma transferência agendada que ainda não rodou |
 | `GET` | `/api/transfers/{id}` | Consulta uma transferência |
 | `GET` | `/api/accounts` | Lista as contas |
 | `GET` | `/api/accounts/{id}` | Consulta saldo, disponível e limites de uma conta |
 
 ### Respostas
 
-- **201 Created**: a transferência foi concluída. O corpo traz a transferência, e o header `Location` aponta para ela.
+- **201 Created**: a transferência foi concluída, ou agendada. O corpo traz a transferência, e o header `Location` aponta para ela.
 - **422 Unprocessable Entity**: a requisição está correta, mas uma regra de negócio barrou. A resposta é um `ProblemDetails` com o campo `reason` (por exemplo `InsufficientFunds` ou `HourlyAttemptsExceeded`). Quando a recusa vem de uma tentativa que foi registrada, a resposta também traz o `transferId`, porque a tentativa ficou gravada como `Failed` e pode ser consultada.
-- **404 Not Found**: alguma das contas não existe.
+- **404 Not Found**: alguma das contas, ou a transferência, não existe.
+- **409 Conflict**: a transferência mudou de status por outra operação enquanto esta acontecia (por exemplo, um cancelamento ao mesmo tempo em que o agendador começou a processá-la).
 - **400 Bad Request**: JSON malformado ou campo com tipo errado.
 
 Escolhi responder 422 na recusa, em vez de 201 com `status: Failed`. Para quem consome a API, "deu certo ou não" fica no status HTTP, sem precisar abrir o corpo. Como a tentativa foi registrada, o `transferId` continua disponível para consulta.
@@ -120,6 +123,16 @@ Tudo acontece dentro de uma única transação:
 O limite usado é o do período (dia ou noite) do momento da tentativa, mesmo que a janela de 60 minutos tenha começado no outro período.
 
 O lock na conta de origem serializa as transferências dela. Por isso a contagem da janela e o saldo não mudam entre a checagem e o débito.
+
+## Transferências agendadas
+
+Ao agendar, só confiro o que não muda com o tempo: valor positivo, contas diferentes, data no futuro e contas existentes. Saldo, conta ativa e limites por hora são conferidos **na hora da execução**, porque até lá tudo isso pode mudar. Por isso a agendada também só entra na contagem da janela de 60 minutos quando roda.
+
+O cancelamento só vale para transferências em `Scheduled`. Uma transferência que já começou a ser processada não pode mais ser cancelada.
+
+**Cancelamento e execução ao mesmo tempo.** As duas operações partem de `Scheduled`. O `Status` da transferência é um *concurrency token*: o `UPDATE` sai com `WHERE Status = 'Scheduled'`. Se outra operação mudou o status antes, nenhuma linha é afetada, o EF lança `DbUpdateConcurrencyException` e a API responde 409. Só uma das duas vence.
+
+Aqui o controle é otimista, diferente do lock pessimista das contas. O conflito entre cancelar e executar é raro e não precisa de retry: quem perdeu só precisa saber que perdeu.
 
 ## Decisões de persistência
 

@@ -4,6 +4,8 @@ namespace Transfers.Application.Transfers
 {
     public sealed record CreateTransferRequest(Guid SourceAccountId, Guid DestinationAccountId, decimal Amount);
 
+    public sealed record ScheduleTransferRequest(Guid SourceAccountId, Guid DestinationAccountId, decimal Amount, DateTimeOffset ScheduledFor);
+
     public sealed record TransferResponse(
         Guid Id,
         Guid SourceAccountId,

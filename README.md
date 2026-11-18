@@ -1,12 +1,12 @@
 # Transferências entre contas
 
-API em ASP.NET Core (.NET 10) com SQL Server para transferências entre contas, com cheque especial, limite de valor e de tentativas por hora (com regras diferentes de dia e de noite) e transferências agendadas.
+API em ASP.NET Core (.NET 10) com SQL Server, e um frontend em React, para transferências entre contas: cheque especial, limite de valor e de tentativas por hora (com regras diferentes de dia e de noite) e transferências agendadas.
 
 > Projeto em construção: este README cresce junto com o código.
 
 ## Como rodar
 
-Pré-requisitos: .NET SDK 10 e Docker.
+Pré-requisitos: .NET SDK 10, Node.js 20 ou mais novo, e Docker.
 
 1. Suba o SQL Server:
 
@@ -21,11 +21,27 @@ Pré-requisitos: .NET SDK 10 e Docker.
    dotnet ef database update -p src/Transfers.Infrastructure -s src/Transfers.Api
    ```
 
-3. Rode os testes:
+3. Suba a API (fica em `http://localhost:5009`, com o Swagger em `/swagger`):
+
+   ```bash
+   dotnet run --project src/Transfers.Api --launch-profile http
+   ```
+
+4. Em outro terminal, suba o frontend (fica em `http://localhost:5173`):
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+5. Rode os testes:
 
    ```bash
    dotnet test
    ```
+
+O frontend chama a API em `http://localhost:5009` por padrão. Para mudar o endereço, crie um `frontend/.env.local` a partir do `.env.example`. A API só aceita chamadas do navegador vindas das origens listadas em `Cors:AllowedOrigins`, que no ambiente de desenvolvimento é `http://localhost:5173`.
 
 A connection string fica em `src/Transfers.Api/appsettings.Development.json` e aponta para esse container. A senha está ali só porque é um banco local e descartável. Fora daqui ela iria para variável de ambiente ou para um cofre de segredos.
 
@@ -141,6 +157,14 @@ Aqui o controle é otimista, diferente do lock pessimista das contas. O conflito
 **Uma transferência não derruba as outras.** Um erro em uma transferência não interrompe o lote, e um erro no ciclo inteiro (banco fora do ar, por exemplo) é registrado no log e tentado de novo no próximo ciclo.
 
 O worker fica na Api, ao lado dos controllers, porque os dois são pontos de entrada: um recebe HTTP, o outro recebe o tempo passando. Ambos só chamam o `TransferService`.
+
+## Frontend
+
+React com TypeScript, criado com Vite, sem biblioteca de componentes nem de estado. Para quatro telas pequenas, `useState` e `fetch` resolvem, e o código fica fácil de ler.
+
+- Toda chamada passa por um único cliente (`src/api.ts`). Quando a resposta não é 2xx, ele lança um `ApiError` com o `ProblemDetails` da API. Assim, as telas mostram o motivo de uma recusa (`reason`) sem precisar tratar cada status separadamente.
+- Os tipos em `src/types.ts` espelham os contratos da API.
+- As versões dos pacotes estão fixadas no `package.json`, para o `npm install` instalar sempre a mesma coisa.
 
 ## Decisões de persistência
 

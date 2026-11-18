@@ -1,3 +1,4 @@
+using Transfers.Api.BackgroundJobs;
 using Transfers.Api.ErrorHandling;
 using Transfers.Application;
 using Transfers.Infrastructure;
@@ -6,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.Configure<SchedulerOptions>(builder.Configuration.GetSection(SchedulerOptions.SectionName));
+builder.Services.AddHostedService<ScheduledTransfersWorker>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

@@ -10,11 +10,18 @@ namespace Transfers.Infrastructure.Persistence
         {
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
-            var result = await work(ct);
-            await SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
+            try
+            {
+                var result = await work(ct);
+                await SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
 
-            return result;
+                return result;
+            }
+            finally
+            {
+                db.ChangeTracker.Clear();
+            }
         }
 
         public async Task SaveChangesAsync(CancellationToken ct)

@@ -134,6 +134,14 @@ O cancelamento só vale para transferências em `Scheduled`. Uma transferência 
 
 Aqui o controle é otimista, diferente do lock pessimista das contas. O conflito entre cancelar e executar é raro e não precisa de retry: quem perdeu só precisa saber que perdeu.
 
+**Quem executa as agendadas.** Um `BackgroundService` (`ScheduledTransfersWorker`) acorda a cada 10 segundos e busca as transferências em `Scheduled` com `ScheduledFor` já vencido, em lotes de 50. O intervalo e o tamanho do lote ficam na seção `Scheduler` do `appsettings`. Cada transferência roda na sua própria transação, com exatamente o mesmo fluxo da imediata: lock nas contas, checagens, débito e crédito. A única diferença é que ela passa de `Scheduled` para `Processing` em vez de nascer em `Processing`. Se falhar na execução (sem saldo, conta bloqueada, limite), ela fica `Failed` com o motivo, como qualquer tentativa.
+
+**Mais de uma instância rodando.** Se duas instâncias da API pegarem a mesma transferência, as duas tentam, mas o `WHERE Status = 'Scheduled'` deixa só uma gravar. A outra recebe o conflito, a transação dela é desfeita (inclusive o débito) e ela segue para a próxima. Não existe processamento em dobro.
+
+**Uma transferência não derruba as outras.** Um erro em uma transferência não interrompe o lote, e um erro no ciclo inteiro (banco fora do ar, por exemplo) é registrado no log e tentado de novo no próximo ciclo.
+
+O worker fica na Api, ao lado dos controllers, porque os dois são pontos de entrada: um recebe HTTP, o outro recebe o tempo passando. Ambos só chamam o `TransferService`.
+
 ## Decisões de persistência
 
 **Mapeamento fora do domínio.** As entidades não têm atributo nenhum do EF. Cada uma tem sua classe `IEntityTypeConfiguration` na Infrastructure.

@@ -75,6 +75,28 @@ namespace Transfers.Application.Transfers
             return TransferResponse.From(transfer);
         }
 
+        public async Task<ScheduledBatchResult> ProcessDueScheduledAsync(int batchSize, CancellationToken ct)
+        {
+            var dueIds = await _transfers.ListDueScheduledIdsAsync(_timeProvider.GetUtcNow(), batchSize, ct);
+            var processed = 0;
+            var skipped = 0;
+
+            foreach (var id in dueIds)
+            {
+                try
+                {
+                    var ran = await _unitOfWork.ExecuteInTransactionAsync(token => ProcessScheduledAsync(id, token), ct);
+                    if (ran) processed++; else skipped++;
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    skipped++;
+                }
+            }
+
+            return new ScheduledBatchResult(processed, skipped);
+        }
+
         public async Task<TransferResponse> GetByIdAsync(Guid id, CancellationToken ct)
         {
             var transfer = await _transfers.GetByIdAsync(id, ct)
@@ -103,6 +125,21 @@ namespace Transfers.Application.Transfers
             {
                 transfer.Fail(ex.Reason, now);
             }
+        }
+
+        private async Task<bool> ProcessScheduledAsync(Guid id, CancellationToken ct)
+        {
+            var transfer = await _transfers.GetByIdAsync(id, ct);
+            if (transfer is null || transfer.Status != TransferStatus.Scheduled)
+            {
+                return false;
+            }
+
+            var now = _timeProvider.GetUtcNow();
+            transfer.StartProcessing(now);
+            await ProcessAsync(transfer, now, ct);
+
+            return true;
         }
 
         private async Task EnsureAccountExistsAsync(Guid id, CancellationToken ct)

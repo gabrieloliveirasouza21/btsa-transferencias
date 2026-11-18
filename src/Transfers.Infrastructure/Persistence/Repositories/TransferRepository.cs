@@ -25,5 +25,14 @@ namespace Transfers.Infrastructure.Persistence.Repositories
 
             return new HourlyUsage(attempts, amount);
         }
+
+        public async Task<IReadOnlyList<Guid>> ListDueScheduledIdsAsync(DateTimeOffset now, int batchSize, CancellationToken ct) =>
+            await db.Transfers
+                .AsNoTracking()
+                .Where(t => t.Status == TransferStatus.Scheduled && t.ScheduledFor <= now)
+                .OrderBy(t => t.ScheduledFor)
+                .Select(t => t.Id)
+                .Take(batchSize)
+                .ToListAsync(ct);
     }
 }

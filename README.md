@@ -164,6 +164,8 @@ React com TypeScript, criado com Vite, sem biblioteca de componentes nem de esta
 
 - Toda chamada passa por um único cliente (`src/api.ts`). Quando a resposta não é 2xx, ele lança um `ApiError` com o `ProblemDetails` da API. Assim, as telas mostram o motivo de uma recusa (`reason`) sem precisar tratar cada status separadamente.
 - Os tipos em `src/types.ts` espelham os contratos da API.
+- O formulário faz a transferência imediata e a agendada. Uma recusa aparece com o motivo em português e, quando a tentativa ficou registrada, com o Id dela. Depois de cada envio, a lista de contas é recarregada para mostrar os saldos novos.
+- A data do agendamento é digitada no horário local do navegador e enviada à API em UTC (`toISOString()`). A API guarda tudo em UTC e só converte para o horário de Brasília para decidir se é dia ou noite.
 - As versões dos pacotes estão fixadas no `package.json`, para o `npm install` instalar sempre a mesma coisa.
 
 ## Decisões de persistência

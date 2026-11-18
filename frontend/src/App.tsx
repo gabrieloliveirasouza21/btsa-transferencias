@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import type { Account } from './types';
 import { AccountsPanel } from './components/AccountsPanel';
+import { TransferForm } from './components/TransferForm';
 
 export function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -32,6 +33,7 @@ export function App() {
 
       <main className="content">
         <AccountsPanel accounts={accounts} loading={loading} error={error} onRefresh={loadAccounts} />
+        <TransferForm accounts={accounts} onSubmitted={loadAccounts} />
       </main>
     </div>
   );

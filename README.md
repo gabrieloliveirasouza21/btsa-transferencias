@@ -87,6 +87,26 @@ Scheduled → Cancelled
 
 **Não encontrado não é regra de negócio.** Uma conta que não existe gera `NotFoundException` (404). Uma regra violada gera `DomainException` (422).
 
+## Endpoints
+
+Com a Api rodando (`dotnet run --project src/Transfers.Api --launch-profile http`), o Swagger fica em `http://localhost:5009/swagger`.
+
+| Método | Rota | O que faz |
+|---|---|---|
+| `POST` | `/api/transfers` | Transferência imediata |
+| `GET` | `/api/transfers/{id}` | Consulta uma transferência |
+| `GET` | `/api/accounts` | Lista as contas |
+| `GET` | `/api/accounts/{id}` | Consulta saldo, disponível e limites de uma conta |
+
+### Respostas
+
+- **201 Created**: a transferência foi concluída. O corpo traz a transferência, e o header `Location` aponta para ela.
+- **422 Unprocessable Entity**: a requisição está correta, mas uma regra de negócio barrou. A resposta é um `ProblemDetails` com o campo `reason` (por exemplo `InsufficientFunds` ou `HourlyAttemptsExceeded`). Quando a recusa vem de uma tentativa que foi registrada, a resposta também traz o `transferId`, porque a tentativa ficou gravada como `Failed` e pode ser consultada.
+- **404 Not Found**: alguma das contas não existe.
+- **400 Bad Request**: JSON malformado ou campo com tipo errado.
+
+Escolhi responder 422 na recusa, em vez de 201 com `status: Failed`. Para quem consome a API, "deu certo ou não" fica no status HTTP, sem precisar abrir o corpo. Como a tentativa foi registrada, o `transferId` continua disponível para consulta.
+
 ## Como uma transferência é processada
 
 Tudo acontece dentro de uma única transação:

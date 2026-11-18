@@ -87,6 +87,20 @@ Scheduled → Cancelled
 
 **Não encontrado não é regra de negócio.** Uma conta que não existe gera `NotFoundException` (404). Uma regra violada gera `DomainException` (422).
 
+## Como uma transferência é processada
+
+Tudo acontece dentro de uma única transação:
+
+1. Valido a entrada: valor maior que zero e contas diferentes. Se isso falhar, a requisição nem chega a virar tentativa.
+2. Travo as duas contas, sempre em ordem crescente de Id. Se duas transferências A→B e B→A chegarem juntas, as duas pedem os locks na mesma ordem, e isso evita deadlock.
+3. Confiro, nessa ordem: as duas contas estão ativas, o número de tentativas na janela, o valor na janela e o saldo com o cheque especial.
+4. Se tudo passou, debito, credito e marco a transferência como `Completed`. Se alguma regra falhou, ela vira `Failed` com o motivo.
+5. Salvo e faço o commit. A tentativa rejeitada também é gravada, porque ela conta para o limite de tentativas.
+
+O limite usado é o do período (dia ou noite) do momento da tentativa, mesmo que a janela de 60 minutos tenha começado no outro período.
+
+O lock na conta de origem serializa as transferências dela. Por isso a contagem da janela e o saldo não mudam entre a checagem e o débito.
+
 ## Decisões de persistência
 
 **Mapeamento fora do domínio.** As entidades não têm atributo nenhum do EF. Cada uma tem sua classe `IEntityTypeConfiguration` na Infrastructure.

@@ -3,11 +3,13 @@ import { api } from './api';
 import type { Account } from './types';
 import { AccountsPanel } from './components/AccountsPanel';
 import { TransferForm } from './components/TransferForm';
+import { TransferLookup } from './components/TransferLookup';
 
 export function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTransferId, setSelectedTransferId] = useState('');
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -25,6 +27,14 @@ export function App() {
     void loadAccounts();
   }, [loadAccounts]);
 
+  const handleSubmitted = useCallback(
+    (transferId?: string) => {
+      if (transferId) setSelectedTransferId(transferId);
+      void loadAccounts();
+    },
+    [loadAccounts],
+  );
+
   return (
     <div className="layout">
       <header className="app-header">
@@ -33,7 +43,10 @@ export function App() {
 
       <main className="content">
         <AccountsPanel accounts={accounts} loading={loading} error={error} onRefresh={loadAccounts} />
-        <TransferForm accounts={accounts} onSubmitted={loadAccounts} />
+        <div className="stack">
+          <TransferForm accounts={accounts} onSubmitted={handleSubmitted} />
+          <TransferLookup accounts={accounts} selectedId={selectedTransferId} onChanged={loadAccounts} />
+        </div>
       </main>
     </div>
   );

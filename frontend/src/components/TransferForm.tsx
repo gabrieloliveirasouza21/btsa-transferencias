@@ -6,7 +6,7 @@ import { reasonLabel } from '../labels';
 
 interface Props {
   accounts: Account[];
-  onSubmitted: () => void;
+  onSubmitted: (transferId?: string) => void;
 }
 
 type Mode = 'now' | 'scheduled';
@@ -44,23 +44,28 @@ export function TransferForm({ accounts, onSubmitted }: Props) {
     setOutcome(null);
 
     const input = { sourceAccountId: sourceId, destinationAccountId: destinationId, amount: Number(amount) };
+    let transferId: string | undefined;
 
     try {
       if (mode === 'now') {
-        setOutcome({ kind: 'completed', transfer: await api.createTransfer(input) });
+        const transfer = await api.createTransfer(input);
+        transferId = transfer.id;
+        setOutcome({ kind: 'completed', transfer });
       } else {
         const transfer = await api.scheduleTransfer({ ...input, scheduledFor: new Date(scheduledFor).toISOString() });
+        transferId = transfer.id;
         setOutcome({ kind: 'scheduled', transfer });
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
-        setOutcome({ kind: 'rejected', reason: reasonLabel(err.problem.reason) || err.message, transferId: err.problem.transferId });
+        transferId = err.problem.transferId;
+        setOutcome({ kind: 'rejected', reason: reasonLabel(err.problem.reason) || err.message, transferId });
       } else {
         setOutcome({ kind: 'error', message: err instanceof Error ? err.message : 'Erro inesperado.' });
       }
     } finally {
       setSubmitting(false);
-      onSubmitted();
+      onSubmitted(transferId);
     }
   }
 

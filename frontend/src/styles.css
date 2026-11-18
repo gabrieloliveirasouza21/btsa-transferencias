@@ -183,6 +183,64 @@ button:disabled {
   color: var(--text);
 }
 
+.stack {
+  display: grid;
+  gap: 20px;
+}
+
+.form.lookup {
+  grid-template-columns: 1fr auto;
+}
+
+button.secondary.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  margin-top: 12px;
+}
+
+.transfer-details {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.details dt {
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+}
+
+.badge.status-completed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge.status-scheduled,
+.badge.status-processing {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge.status-failed {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.badge.status-cancelled {
+  background: var(--bg);
+  color: var(--muted);
+}
+
 .accounts {
   list-style: none;
   margin: 0;

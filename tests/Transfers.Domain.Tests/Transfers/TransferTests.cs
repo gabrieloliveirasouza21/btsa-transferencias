@@ -7,6 +7,8 @@ public class TransferTests
 {
     private static readonly DateTimeOffset Now = new(2026, 11, 17, 14, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset InThirtyMinutes = Now.AddMinutes(30);
+    private static readonly Guid SourceId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid DestinationId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     public enum TransferAction { StartProcessing, Complete, Fail, Cancel }
 
@@ -15,11 +17,11 @@ public class TransferTests
     [Fact]
     public void CreateImmediate_ShouldStartInProcessing_WithGivenData()
     {
-        var transfer = Transfer.CreateImmediate(1, 2, 300m, Now);
+        var transfer = Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
 
         Assert.NotEqual(Guid.Empty, transfer.Id);
-        Assert.Equal(1, transfer.SourceAccountId);
-        Assert.Equal(2, transfer.DestinationAccountId);
+        Assert.Equal(SourceId, transfer.SourceAccountId);
+        Assert.Equal(DestinationId, transfer.DestinationAccountId);
         Assert.Equal(300m, transfer.Amount);
         Assert.Equal(TransferStatus.Processing, transfer.Status);
         Assert.Equal(Now, transfer.CreatedAt);
@@ -30,7 +32,7 @@ public class TransferTests
     [Fact]
     public void CreateScheduled_ShouldStartInScheduled_WithScheduledFor()
     {
-        var transfer = Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+        var transfer = Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
 
         Assert.Equal(TransferStatus.Scheduled, transfer.Status);
         Assert.Equal(InThirtyMinutes, transfer.ScheduledFor);
@@ -44,7 +46,7 @@ public class TransferTests
     public void CreateImmediate_ShouldThrowInvalidAmount_WhenAmountIsNotPositive(double amount)
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Transfer.CreateImmediate(1, 2, (decimal)amount, Now));
+            Transfer.CreateImmediate(SourceId, DestinationId, (decimal)amount, Now));
 
         Assert.Equal(FailureReason.InvalidAmount, exception.Reason);
     }
@@ -55,7 +57,7 @@ public class TransferTests
     public void CreateScheduled_ShouldThrowInvalidAmount_WhenAmountIsNotPositive(double amount)
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Transfer.CreateScheduled(1, 2, (decimal)amount, InThirtyMinutes, Now));
+            Transfer.CreateScheduled(SourceId, DestinationId, (decimal)amount, InThirtyMinutes, Now));
 
         Assert.Equal(FailureReason.InvalidAmount, exception.Reason);
     }
@@ -64,7 +66,7 @@ public class TransferTests
     public void CreateImmediate_ShouldThrowSameAccount_WhenSourceEqualsDestination()
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Transfer.CreateImmediate(1, 1, 300m, Now));
+            Transfer.CreateImmediate(SourceId, SourceId, 300m, Now));
 
         Assert.Equal(FailureReason.SameAccount, exception.Reason);
     }
@@ -73,7 +75,7 @@ public class TransferTests
     public void CreateScheduled_ShouldThrowSameAccount_WhenSourceEqualsDestination()
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Transfer.CreateScheduled(1, 1, 300m, InThirtyMinutes, Now));
+            Transfer.CreateScheduled(SourceId, SourceId, 300m, InThirtyMinutes, Now));
 
         Assert.Equal(FailureReason.SameAccount, exception.Reason);
     }
@@ -84,7 +86,7 @@ public class TransferTests
     public void CreateScheduled_ShouldThrowInvalidScheduledDate_WhenDateIsNotInTheFuture(int minutesFromNow)
     {
         var exception = Assert.Throws<DomainException>(() =>
-            Transfer.CreateScheduled(1, 2, 300m, Now.AddMinutes(minutesFromNow), Now));
+            Transfer.CreateScheduled(SourceId, DestinationId, 300m, Now.AddMinutes(minutesFromNow), Now));
 
         Assert.Equal(FailureReason.InvalidScheduledDate, exception.Reason);
     }
@@ -94,7 +96,7 @@ public class TransferTests
     [Fact]
     public void StartProcessing_ShouldMoveScheduledToProcessing()
     {
-        var transfer = Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+        var transfer = Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
 
         transfer.StartProcessing(InThirtyMinutes);
 
@@ -105,7 +107,7 @@ public class TransferTests
     [Fact]
     public void Complete_ShouldMoveProcessingToCompleted()
     {
-        var transfer = Transfer.CreateImmediate(1, 2, 300m, Now);
+        var transfer = Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
 
         transfer.Complete(Now);
 
@@ -117,7 +119,7 @@ public class TransferTests
     [Fact]
     public void Fail_ShouldMoveProcessingToFailed_WithReason()
     {
-        var transfer = Transfer.CreateImmediate(1, 2, 300m, Now);
+        var transfer = Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
 
         transfer.Fail(FailureReason.InsufficientFunds, Now);
 
@@ -129,7 +131,7 @@ public class TransferTests
     [Fact]
     public void Cancel_ShouldMoveScheduledToCancelled()
     {
-        var transfer = Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+        var transfer = Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
 
         transfer.Cancel(Now);
 
@@ -139,7 +141,7 @@ public class TransferTests
     [Fact]
     public void ScheduledTransfer_ShouldFollowFullPath_ScheduledProcessingCompleted()
     {
-        var transfer = Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+        var transfer = Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
 
         transfer.StartProcessing(InThirtyMinutes);
         transfer.Complete(InThirtyMinutes);
@@ -177,19 +179,19 @@ public class TransferTests
         switch (status)
         {
             case TransferStatus.Scheduled:
-                return Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+                return Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
             case TransferStatus.Processing:
-                return Transfer.CreateImmediate(1, 2, 300m, Now);
+                return Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
             case TransferStatus.Completed:
-                var completed = Transfer.CreateImmediate(1, 2, 300m, Now);
+                var completed = Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
                 completed.Complete(Now);
                 return completed;
             case TransferStatus.Failed:
-                var failed = Transfer.CreateImmediate(1, 2, 300m, Now);
+                var failed = Transfer.CreateImmediate(SourceId, DestinationId, 300m, Now);
                 failed.Fail(FailureReason.InsufficientFunds, Now);
                 return failed;
             case TransferStatus.Cancelled:
-                var cancelled = Transfer.CreateScheduled(1, 2, 300m, InThirtyMinutes, Now);
+                var cancelled = Transfer.CreateScheduled(SourceId, DestinationId, 300m, InThirtyMinutes, Now);
                 cancelled.Cancel(Now);
                 return cancelled;
             default:

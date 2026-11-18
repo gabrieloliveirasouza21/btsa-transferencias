@@ -8,8 +8,8 @@ namespace Transfers.Domain.Transfers
     public class Transfer
     {
         public Guid Id { get; private set; }
-        public int SourceAccountId { get; private set; }
-        public int DestinationAccountId { get; private set; }
+        public Guid SourceAccountId { get; private set; }
+        public Guid DestinationAccountId { get; private set; }
         public decimal Amount { get; private set; }
         public TransferStatus Status { get; private set; }
         public DateTimeOffset CreatedAt { get; private set; }
@@ -22,7 +22,7 @@ namespace Transfers.Domain.Transfers
 
         }
 
-        public static Transfer CreateImmediate(int source, int destination, decimal amount, DateTimeOffset now)
+        public static Transfer CreateImmediate(Guid source, Guid destination, decimal amount, DateTimeOffset now)
         {
             if(amount <= 0)
             {
@@ -43,7 +43,7 @@ namespace Transfers.Domain.Transfers
             };
         }
 
-        public static Transfer CreateScheduled(int source, int destination, decimal amount, DateTimeOffset scheduledFor, DateTimeOffset now)
+        public static Transfer CreateScheduled(Guid source, Guid destination, decimal amount, DateTimeOffset scheduledFor, DateTimeOffset now)
         {
             if (amount <= 0)
             {

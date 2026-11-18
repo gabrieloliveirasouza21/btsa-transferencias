@@ -73,6 +73,20 @@ Scheduled → Cancelled
 
 **O relógio vem de fora.** As factories e transições recebem o "agora" como parâmetro (`DateTimeOffset`) em vez de chamar `DateTime.Now` lá dentro. Isso torna o domínio determinístico e permite testar 19:59 e 20:00 sem depender da hora em que o teste roda.
 
+## Decisões da camada de aplicação
+
+**A Application define o que precisa, a Infrastructure entrega.** As interfaces dos repositórios e da unidade de trabalho moram na Application, e as implementações com EF Core ficam na Infrastructure. É inversão de dependência: o caso de uso não sabe que existe SQL Server.
+
+**Interface só onde existe fronteira.** Repositórios têm interface porque são a fronteira com o banco. Os serviços da Application não têm, porque cada um tem uma única implementação e nada precisa trocá-la. Criar `ITransferService` só por hábito seria cerimônia.
+
+**Uma transação, do começo ao fim.** `IUnitOfWork.ExecuteInTransactionAsync` abre a transação, roda o trabalho, salva e faz o commit. Se algo lançar exceção no meio, nada é gravado.
+
+**O que conta na janela de 60 minutos.** Nas tentativas, contam as transferências concluídas e as rejeitadas. No valor, só as concluídas, porque uma rejeitada não movimentou dinheiro. Agendada e cancelada não contam em nenhum dos dois.
+
+**Noite no horário de Brasília, configurável.** O início e o fim da noite e o fuso ficam na seção `TransferRules` do `appsettings`. O servidor pode rodar em UTC, mas "20h" é 20h para o cliente.
+
+**Não encontrado não é regra de negócio.** Uma conta que não existe gera `NotFoundException` (404). Uma regra violada gera `DomainException` (422).
+
 ## Decisões de persistência
 
 **Mapeamento fora do domínio.** As entidades não têm atributo nenhum do EF. Cada uma tem sua classe `IEntityTypeConfiguration` na Infrastructure.
